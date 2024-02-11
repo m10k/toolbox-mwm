@@ -1,0 +1,6 @@
+toolbox-mwm (0.1-1) unstable; urgency=medium
+
+  * Added scripts
+    - dstatus: Status monitor for mwm and dwm
+
+ -- Matthias Kruk <m@m10k.eu>  Sun, 11 Feb 2024 16:46:18 +0900

@@ -1,0 +1,16 @@
+Source: toolbox-mwm
+Priority: optional
+Maintainer: Matthias Kruk <m@m10k.eu>
+Build-Depends: debhelper (>= 9), make, coreutils, findutils
+Standards-Version: 3.9.8
+Section: shells
+Homepage: https://m10k.eu/toolbox.html
+
+Package: toolbox-mwm
+Section: shells
+Architecture: all
+Depends: bash (>= 4.0), toolbox, toolbox-linux, coreutils, x11-xserver-utils, ${misc:Depends}
+Description: Toolbox modules and scripts for mwm
+ This package provides modules and scripts for use with mwm. The following
+ scripts are in this package:
+  - dstatus: A status monitor for mwm and dwm

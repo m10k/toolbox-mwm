@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # dstatus - Status monitor for mwm
-# Copyright (C) 2024 Matthias Kruk
+# Copyright (C) 2024-2025 Matthias Kruk
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,12 +42,12 @@ get_pwr_status() {
 		return 1
 	fi
 
-	if (( level < 15 )); then
-		pretty_level=$(pango_markup "red" "$level%")
-	elif (( level < 50 )); then
-		pretty_level=$(pango_markup "#c18716" "$level%")
+	if (( level < threshold["battery_low"] )); then
+		pretty_level=$(pango_markup "${color["battery_low"]}" "$level%")
+	elif (( level < threshold["battery_medium"] )); then
+		pretty_level=$(pango_markup "${color["battery_medium"]}" "$level%")
 	else
-		pretty_level=$(pango_markup "green" "$level%")
+		pretty_level=$(pango_markup "${color["battery_high"]}" "$level%")
 	fi
 
 	if is_charging; then
@@ -82,12 +82,12 @@ get_net_status() {
 		if wifi_addr=$(net_iface_get_address "$wireless_iface" "inet") &&
 		   wifi_essid=$(net_iface_get_essid "$wireless_iface"); then
 			wifi_addr=$(head -n 1 <<< "$wifi_addr")
-			wifi_addr=$(pango_markup "green" "$wifi_addr")
+			wifi_addr=$(pango_markup "${color["network_address"]}" "$wifi_addr")
 			wifi_essid=$(printf "$wifi_essid")
-			wifi_essid=$(pango_markup "green" "$wifi_essid")
+			wifi_essid=$(pango_markup "${color["network_name"]}" "$wifi_essid")
 			wifi_status="$wifi_addr|$wifi_essid"
 		else
-			wifi_status=$(pango_markup "red" "切断")
+			wifi_status=$(pango_markup "${color["network_disconnected"]}" "切断")
 		fi
 
 		printf '%s〔%s〕' "$wireless_label" "$wifi_status"
@@ -96,9 +96,9 @@ get_net_status() {
 	if [[ -n "$wired_iface" ]]; then
 		if wired_status=$(net_iface_get_address "$wired_iface" "inet"); then
 			wired_status=$(head -n 1 <<< "$wired_status")
-			wired_status=$(pango_markup "green" "$wired_status")
+			wired_status=$(pango_markup "${color["network_address"]}" "$wired_status")
 		else
-			wired_status=$(pango_markup "red" "切断")
+			wired_status=$(pango_markup "${color["network_disconnected"]}" "切断")
 		fi
 
 		printf '%s〔%s〕' "$wired_label" "$wired_status"
@@ -157,8 +157,6 @@ _start() {
 	local charging_label="$6"
 	local discharging_label="$7"
 
-	local err
-
 	while inst_running; do
 		update_status "$wired_iface"       \
 		              "$wired_label"       \
@@ -173,6 +171,21 @@ _start() {
 	return 0
 }
 
+try_conf_get() {
+	local -n dst="$1"
+	local name="$2"
+	local config="$3"
+
+	local value
+
+	if value=$(conf_get "$name" "$config"); then
+		dst="$value"
+		return 0
+	fi
+
+	return 1
+}
+
 main() {
 	local wired_iface
 	local wireless_iface
@@ -183,9 +196,31 @@ main() {
 	local discharging_label
 	local -gx LANG
 
+	declare -A threshold
+	declare -A color
+	local name
+
+	color["battery_low"]="red"
+	color["battery_medium"]="#c18716"
+	color["battery_high"]="green"
+	color["network_name"]="blue"
+	color["network_address"]="blue"
+	color["network_disconnected"]="red"
+
+	threshold["battery_low"]=15
+	threshold["battery_medium"]=50
+
 	if ! opt_parse "$@"; then
 		return 1
 	fi
+
+	for name in "${!color[@]}"; do
+		try_conf_get color["$name"] "$name" "colors"
+	done
+
+	for name in "${threshold[@]}"; do
+		try_conf_get threshold["$name"] "$name" "thresholds"
+	done
 
 	if ! LANG=$(conf_get "locale"); then
 		LANG="C"
